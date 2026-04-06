@@ -2,126 +2,186 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <title>LoLz.Live идеяы</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HTML5 Audio Player</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <img src="lzt.png" class="lzt">
-  <img src="https://nztcdn.com/files/1db0e9d7-5851-417b-9cd4-3636534476d9.webp" class="lzt1">
-  <div class="pla1">
-    <div class="player">
-      <audio id="audio" src="love.mp3" preload="auto"></audio>
-
-      <div class="controls">
-        <button class="play-btn" id="playPauseBtn"></button>
-
-        <div class="progress-container" id="progressContainer">
-          <div class="progress" id="progress"></div>
-        </div>
-
-        <div class="time" id="duration">0:00</div>
-      </div>
-    </div>
-
-    <div class="volume-container">
-      <input type="range" min="0" max="1" step="0.01" value="1" id="volumeSlider" class="volume-slider">
-    </div>
+  <div class="top-banners" aria-hidden="true">
+    <img src="lzt.png" class="brand-logo" alt="">
+    <img
+      src="https://nztcdn.com/files/1db0e9d7-5851-417b-9cd4-3636534476d9.webp"
+      class="brand-badge"
+      alt=""
+    >
   </div>
 
-  <a href="https://lolz.live/threads/8864532/" class="tema">Тема на форуме</a>
+  <main class="page">
+    <section class="audio-player" aria-label="Аудиоплеер">
+      <audio id="audio" src="python.mp3" preload="auto"></audio>
+
+      <button
+        class="play-toggle"
+        id="playPauseBtn"
+        type="button"
+        aria-label="Воспроизвести"
+        aria-pressed="false"
+      ></button>
+
+      <button
+        class="progress-container"
+        id="progressContainer"
+        type="button"
+        aria-label="Перемотка аудио"
+      >
+        <span class="progress-track"></span>
+        <span class="progress" id="progress"></span>
+      </button>
+
+      <div class="time" id="currentTime">0:00</div>
+
+      <label class="volume-control" for="volumeSlider" aria-label="Громкость">
+        <input
+          type="range"
+          min="0"
+          max="1"
+          step="0.01"
+          value="1"
+          id="volumeSlider"
+          class="volume-slider"
+        >
+      </label>
+    </section>
+  </main>
+
   <script>
     const audio = document.getElementById('audio');
     const playPauseBtn = document.getElementById('playPauseBtn');
     const progress = document.getElementById('progress');
     const progressContainer = document.getElementById('progressContainer');
-    const durationText = document.getElementById('duration');
+    const currentTimeText = document.getElementById('currentTime');
     const volumeSlider = document.getElementById('volumeSlider');
 
-    let isPlaying = false;
-
-    
-    const savedVolume = localStorage.getItem('volume');
-    if (savedVolume !== null) {
-      audio.volume = parseFloat(savedVolume);
-      volumeSlider.value = savedVolume;
-    }
-
-   
-    const updateButton = () => {
-      playPauseBtn.innerHTML = isPlaying
-        ? `<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-<rect width="5" height="20" fill="#080808"/>
-<rect x="15" width="5" height="20" fill="#080808"/>
-</svg>
-`
-        : `<svg width="19" height="20" viewBox="0 0 19 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-<path d="M0 0L7.5 4L18.5 10L7 16L0 20V0Z" fill="#080808"/>
-</svg>
-`;
+    const icons = {
+      play: `
+        <svg viewBox="0 0 24 24" aria-hidden="true" role="presentation">
+          <path d="M9 7v10l8-5-8-5Z"></path>
+        </svg>
+      `,
+      pause: `
+        <svg viewBox="0 0 24 24" aria-hidden="true" role="presentation">
+          <rect x="8" y="7" width="3" height="10" rx="1"></rect>
+          <rect x="13" y="7" width="3" height="10" rx="1"></rect>
+        </svg>
+      `
     };
 
-    playPauseBtn.addEventListener('click', () => {
+    const formatTime = (value) => {
+      if (!Number.isFinite(value)) {
+        return '0:00';
+      }
+
+      const minutes = Math.floor(value / 60);
+      const seconds = Math.floor(value % 60).toString().padStart(2, '0');
+      return `${minutes}:${seconds}`;
+    };
+
+    const updatePlayButton = () => {
+      const isPlaying = !audio.paused;
+      playPauseBtn.innerHTML = isPlaying ? icons.pause : icons.play;
+      playPauseBtn.setAttribute('aria-label', isPlaying ? 'Пауза' : 'Воспроизвести');
+      playPauseBtn.setAttribute('aria-pressed', String(isPlaying));
+    };
+
+    const updateProgress = () => {
+      const duration = audio.duration || 0;
+      const percent = duration ? (audio.currentTime / duration) * 100 : 0;
+
+      progress.style.width = `${percent}%`;
+      currentTimeText.textContent = formatTime(audio.currentTime);
+    };
+
+    const savedVolume = localStorage.getItem('volume');
+    if (savedVolume !== null) {
+      const parsedVolume = parseFloat(savedVolume);
+      if (!Number.isNaN(parsedVolume)) {
+        audio.volume = parsedVolume;
+        volumeSlider.value = savedVolume;
+      }
+    }
+
+    playPauseBtn.addEventListener('click', async () => {
       if (audio.paused) {
-        audio.play();
-        isPlaying = true;
+        try {
+          await audio.play();
+        } catch (error) {
+          return;
+        }
       } else {
         audio.pause();
-        isPlaying = false;
       }
-      updateButton();
     });
 
-   
+    audio.addEventListener('loadedmetadata', updateProgress);
     audio.addEventListener('timeupdate', () => {
-      const percent = (audio.currentTime / audio.duration) * 100;
-      progress.style.width = percent + '%';
-
-      const minutes = Math.floor(audio.currentTime / 60);
-      const seconds = Math.floor(audio.currentTime % 60).toString().padStart(2, '0');
-      durationText.textContent = `${minutes}:${seconds}`;
+      localStorage.setItem('currentTime', String(audio.currentTime));
+      updateProgress();
+    });
+    audio.addEventListener('play', () => {
+      localStorage.setItem('isPlaying', 'true');
+      updatePlayButton();
+    });
+    audio.addEventListener('pause', () => {
+      localStorage.setItem('isPlaying', 'false');
+      updatePlayButton();
+    });
+    audio.addEventListener('ended', () => {
+      audio.currentTime = 0;
+      localStorage.setItem('isPlaying', 'false');
+      updateProgress();
+      updatePlayButton();
     });
 
-    
-    progressContainer.addEventListener('click', (e) => {
-      const width = progressContainer.clientWidth;
-      const clickX = e.offsetX;
+    progressContainer.addEventListener('click', (event) => {
       const duration = audio.duration;
-      audio.currentTime = (clickX / width) * duration;
+      if (!duration) {
+        return;
+      }
+
+      const bounds = progressContainer.getBoundingClientRect();
+      const clickX = event.clientX - bounds.left;
+      const nextTime = Math.max(0, Math.min(clickX / bounds.width, 1)) * duration;
+      audio.currentTime = nextTime;
+      localStorage.setItem('currentTime', String(nextTime));
+      updateProgress();
     });
 
-    
     volumeSlider.addEventListener('input', () => {
       const volume = parseFloat(volumeSlider.value);
       audio.volume = volume;
-      localStorage.setItem('volume', volume);
+      localStorage.setItem('volume', String(volume));
     });
-  
-audio.addEventListener('play', () => localStorage.setItem('isPlaying', 'true'));
-audio.addEventListener('pause', () => localStorage.setItem('isPlaying', 'false'));
 
+    window.addEventListener('load', async () => {
+      const savedTime = parseFloat(localStorage.getItem('currentTime'));
+      if (!Number.isNaN(savedTime)) {
+        audio.currentTime = savedTime;
+      }
 
-window.addEventListener('load', () => {
-  if (localStorage.getItem('isPlaying') === 'true') {
-    audio.play().catch(() => {});
-    isPlaying = true;
-    updateButton();
-  }
-});
+      if (localStorage.getItem('isPlaying') === 'true') {
+        try {
+          await audio.play();
+        } catch (error) {
+          audio.pause();
+        }
+      }
 
-audio.addEventListener('timeupdate', () => {
-  localStorage.setItem('currentTime', audio.currentTime);
-});
+      updateProgress();
+      updatePlayButton();
+    });
 
-
-window.addEventListener('load', () => {
-  const savedTime = parseFloat(localStorage.getItem('currentTime'));
-  if (!isNaN(savedTime)) {
-    audio.currentTime = savedTime;
-  }
-});
-
-
-    updateButton();
+    updateProgress();
+    updatePlayButton();
   </script>
 </body>
 </html>
